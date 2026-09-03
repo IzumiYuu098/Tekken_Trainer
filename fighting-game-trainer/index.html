@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notation Lab — Fighting Game Combo Trainer</title>
+<meta name="description" content="Practice fighting-game directional inputs and combos on your keyboard, no controller required." />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">⌁</span>
+      <h1 class="app-title">Notation Lab<span class="app-subtitle">Fighting Game Combo Trainer</span></h1>
+    </div>
+
+    <div class="header-controls">
+      <div class="field-inline">
+        <label for="theme-select">Controller theme</label>
+        <select id="theme-select">
+          <option value="fighting-game">Fighting Game</option>
+          <option value="classic-arcade">Classic Arcade</option>
+          <option value="minimal">Minimal</option>
+          <option value="leverless">Leverless</option>
+        </select>
+      </div>
+      <button id="mute-btn" class="icon-btn" type="button" aria-pressed="false" aria-label="Mute sound">🔊</button>
+    </div>
+  </header>
+
+  <nav class="tab-nav" role="tablist" aria-label="Trainer sections">
+    <button class="tab-btn active" data-tab="practice" role="tab" aria-selected="true">Practice</button>
+    <button class="tab-btn" data-tab="movement" role="tab" aria-selected="false">Movement</button>
+    <button class="tab-btn" data-tab="challenge" role="tab" aria-selected="false">Challenge</button>
+    <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+  </nav>
+
+  <main class="app-main">
+
+    <!-- ================= LEFT: VIRTUAL CONTROLLER + LIVE INPUT ================= -->
+    <section class="panel controller-panel" aria-label="Virtual controller">
+      <h2 class="panel-title">Virtual Controller</h2>
+
+      <div id="virtual-controller" class="virtual-controller theme-fighting-game" data-theme="fighting-game">
+        <div class="vc-dpad" role="group" aria-label="Directions">
+          <button class="vc-btn vc-dir" data-action="up" aria-label="Up">▲</button>
+          <button class="vc-btn vc-dir" data-action="left" aria-label="Left">◀</button>
+          <div class="vc-dpad-center" aria-hidden="true"></div>
+          <button class="vc-btn vc-dir" data-action="right" aria-label="Right">▶</button>
+          <button class="vc-btn vc-dir" data-action="down" aria-label="Down">▼</button>
+        </div>
+        <div class="vc-buttons" role="group" aria-label="Attack buttons">
+          <button class="vc-btn vc-atk" data-action="button1" aria-label="Button 1">1</button>
+          <button class="vc-btn vc-atk" data-action="button2" aria-label="Button 2">2</button>
+          <button class="vc-btn vc-atk" data-action="button3" aria-label="Button 3">3</button>
+          <button class="vc-btn vc-atk" data-action="button4" aria-label="Button 4">4</button>
+        </div>
+      </div>
+
+      <div class="live-input">
+        <div class="current-input-block">
+          <span class="field-label">Current input</span>
+          <div id="current-input-display" class="current-input" aria-live="polite">N</div>
+        </div>
+
+        <div class="history-block">
+          <div class="history-header">
+            <span class="field-label">Input history</span>
+            <div class="history-controls">
+              <select id="history-length-select" aria-label="History length">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+              </select>
+              <button id="clear-history-btn" class="ghost-btn" type="button">Clear</button>
+            </div>
+          </div>
+          <div id="input-history-display" class="input-history" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CENTER: TAB CONTENT ================= -->
+    <section class="panel tab-content-panel" aria-label="Trainer modes">
+
+      <div id="tab-practice" class="tab-panel active" role="tabpanel">
+        <div class="subsection">
+          <div class="subsection-header">
+            <h3>Combo Builder</h3>
+            <button id="builder-record-btn" class="rec-btn" type="button">● Record</button>
+          </div>
+
+          <div id="builder-sequence-display" class="token-row builder-empty" aria-live="polite">
+            <span class="placeholder">No inputs yet — record, click the controller, or add manually.</span>
+          </div>
+
+          <div class="button-row">
+            <button id="builder-add-current-btn" class="ghost-btn" type="button">Add Current</button>
+            <button id="builder-delete-last-btn" class="ghost-btn" type="button">Delete Last</button>
+            <button id="builder-clear-btn" class="ghost-btn" type="button">Clear</button>
+            <button id="builder-random-btn" class="ghost-btn" type="button">Random Combo</button>
+          </div>
+
+          <div class="manual-palette" id="builder-manual-palette" aria-label="Insert notation manually">
+            <button class="palette-btn" data-token="↑" type="button">↑</button>
+            <button class="palette-btn" data-token="↓" type="button">↓</button>
+            <button class="palette-btn" data-token="←" type="button">←</button>
+            <button class="palette-btn" data-token="→" type="button">→</button>
+            <button class="palette-btn" data-token="↖" type="button">↖</button>
+            <button class="palette-btn" data-token="↗" type="button">↗</button>
+            <button class="palette-btn" data-token="↙" type="button">↙</button>
+            <button class="palette-btn" data-token="↘" type="button">↘</button>
+            <span class="palette-divider" aria-hidden="true"></span>
+            <button class="palette-btn atk" data-token="1" type="button">1</button>
+            <button class="palette-btn atk" data-token="2" type="button">2</button>
+            <button class="palette-btn atk" data-token="3" type="button">3</button>
+            <button class="palette-btn atk" data-token="4" type="button">4</button>
+            <button class="palette-btn atk" data-token="1+2" type="button">1+2</button>
+            <button class="palette-btn atk" data-token="3+4" type="button">3+4</button>
+          </div>
+
+          <div class="save-row">
+            <input id="builder-combo-name-input" type="text" placeholder="Combo name" maxlength="40" />
+            <select id="builder-difficulty-select" aria-label="Combo difficulty">
+              <option>Easy</option>
+              <option selected>Normal</option>
+              <option>Hard</option>
+              <option>Expert</option>
+            </select>
+            <button id="builder-save-btn" class="primary-btn" type="button">Save Combo</button>
+            <button id="builder-use-as-target-btn" class="ghost-btn" type="button">Practice This</button>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3>Practice</h3>
+          <div class="practice-grid">
+            <div class="practice-block">
+              <span class="field-label">Target</span>
+              <div id="practice-target-display" class="token-row target-row"></div>
+            </div>
+            <div class="practice-block">
+              <span class="field-label">Your input</span>
+              <div id="practice-progress-display" class="token-row progress-row"></div>
+            </div>
+          </div>
+          <div class="practice-meta">
+            <div class="meta-stat">
+              <span class="field-label">Timer</span>
+              <span id="practice-timer-display" class="meta-value mono">0.000s</span>
+            </div>
+            <div class="meta-stat">
+              <span class="field-label">Result</span>
+              <span id="practice-result-display" class="meta-value result-badge">READY</span>
+            </div>
+            <button id="practice-reset-btn" class="ghost-btn" type="button">Reset Attempt</button>
+          </div>
+          <p id="practice-timing-note" class="hint-text">Timing: Normal (±60ms)</p>
+        </div>
+      </div>
+
+      <div id="tab-movement" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <h3>Movement Drills</h3>
+          <div id="movement-exercise-list" class="exercise-list" role="list"></div>
+        </div>
+        <div class="subsection">
+          <h3 id="movement-active-name">Select a drill</h3>
+          <div class="practice-grid">
+            <div class="practice-block">
+              <span class="field-label">Target</span>
+              <div id="movement-target-display" class="token-row target-row"></div>
+            </div>
+            <div class="practice-block">
+              <span class="field-label">Your input</span>
+              <div id="movement-progress-display" class="token-row progress-row"></div>
+            </div>
+          </div>
+          <div class="practice-meta">
+            <div class="meta-stat">
+              <span class="field-label">Result</span>
+              <span id="movement-result-display" class="meta-value result-badge">READY</span>
+            </div>
+            <button id="movement-reset-btn" class="ghost-btn" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-challenge" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <div class="subsection-header">
+            <h3>Random Challenge</h3>
+            <div class="field-inline">
+              <label for="challenge-difficulty-select">Difficulty</label>
+              <select id="challenge-difficulty-select">
+                <option>Easy</option>
+                <option selected>Normal</option>
+                <option>Hard</option>
+                <option>Expert</option>
+              </select>
+            </div>
+          </div>
+          <button id="challenge-new-btn" class="primary-btn" type="button">New Challenge</button>
+
+          <div class="practice-grid">
+            <div class="practice-block">
+              <span class="field-label">Target</span>
+              <div id="challenge-target-display" class="token-row target-row"></div>
+            </div>
+            <div class="practice-block">
+              <span class="field-label">Your input</span>
+              <div id="challenge-progress-display" class="token-row progress-row"></div>
+            </div>
+          </div>
+          <div class="practice-meta">
+            <div class="meta-stat">
+              <span class="field-label">Timer</span>
+              <span id="challenge-timer-display" class="meta-value mono">0.000s</span>
+            </div>
+            <div class="meta-stat">
+              <span class="field-label">Result</span>
+              <span id="challenge-result-display" class="meta-value result-badge">READY</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-settings" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <h3>Key Mapping</h3>
+          <p class="hint-text">Click a binding, then press the key you want to use.</p>
+          <div id="keybind-list" class="keybind-list">
+            <div class="keybind-row"><span>Up</span><button class="remap-btn" data-action="up" type="button">C</button></div>
+            <div class="keybind-row"><span>Down</span><button class="remap-btn" data-action="down" type="button">W</button></div>
+            <div class="keybind-row"><span>Left</span><button class="remap-btn" data-action="left" type="button">Q</button></div>
+            <div class="keybind-row"><span>Right</span><button class="remap-btn" data-action="right" type="button">E</button></div>
+            <div class="keybind-row"><span>Button 1</span><button class="remap-btn" data-action="button1" type="button">J</button></div>
+            <div class="keybind-row"><span>Button 2</span><button class="remap-btn" data-action="button2" type="button">K</button></div>
+            <div class="keybind-row"><span>Button 3</span><button class="remap-btn" data-action="button3" type="button">U</button></div>
+            <div class="keybind-row"><span>Button 4</span><button class="remap-btn" data-action="button4" type="button">I</button></div>
+          </div>
+          <p id="keybind-conflict-warning" class="warning-text hidden" role="alert"></p>
+        </div>
+
+        <div class="subsection">
+          <h3>Timing &amp; Sound</h3>
+          <div class="field-inline">
+            <label for="timing-difficulty-select">Timing difficulty</label>
+            <select id="timing-difficulty-select">
+              <option value="strict">Strict (±30ms)</option>
+              <option value="normal" selected>Normal (±60ms)</option>
+              <option value="relaxed">Relaxed (±100ms)</option>
+            </select>
+          </div>
+          <div class="field-inline">
+            <label for="sound-toggle-checkbox">Sound feedback</label>
+            <input id="sound-toggle-checkbox" type="checkbox" checked />
+          </div>
+          <div class="field-inline">
+            <label for="reduced-motion-checkbox">Reduce motion</label>
+            <input id="reduced-motion-checkbox" type="checkbox" />
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="save-settings-btn" class="primary-btn" type="button">Save Settings</button>
+          <button id="reset-defaults-btn" class="ghost-btn" type="button">Reset Defaults</button>
+          <span id="settings-saved-note" class="hint-text" aria-live="polite"></span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= RIGHT: STATISTICS + SAVED COMBOS ================= -->
+    <section class="panel side-panel" aria-label="Statistics and saved combos">
+      <div class="subsection">
+        <div class="subsection-header">
+          <h2 class="panel-title">Statistics</h2>
+          <button id="reset-stats-btn" class="ghost-btn small" type="button">Reset</button>
+        </div>
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><span class="stat-value" id="stat-total-attempts">0</span><span class="stat-label">Attempts</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-successful-attempts">0</span><span class="stat-label">Successes</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-failed-attempts">0</span><span class="stat-label">Failures</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-success-rate">0%</span><span class="stat-label">Success rate</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-best-time">—</span><span class="stat-label">Best time</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-average-time">—</span><span class="stat-label">Average time</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-fastest-input">—</span><span class="stat-label">Fastest input</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-average-gap">—</span><span class="stat-label">Avg. input gap</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-current-streak">0</span><span class="stat-label">Current streak</span></div>
+          <div class="stat-card"><span class="stat-value" id="stat-best-streak">0</span><span class="stat-label">Best streak</span></div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h2 class="panel-title">Saved Combos</h2>
+        <ul id="saved-combos-list" class="saved-combos-list">
+          <li class="empty-note">No combos saved yet.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>An original, keyboard-only input trainer. Not affiliated with, endorsed by, or a reproduction of any commercial fighting game.</p>
+  </footer>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
