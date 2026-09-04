@@ -1,7 +1,9 @@
 // statistics.js
 // Global, persisted performance statistics across every practice/challenge/
-// movement attempt. Per-combo statistics (best/average time for one specific
-// saved combo) live on the combo object itself, managed by combo-system.js.
+// movement/skill attempt. Per-combo statistics live on the combo object
+// itself (characters.js). This file adds perfectAttempts/inputErrors/
+// timingErrors on top of the original counters per the CONSISTENCY TRACKING
+// requirements.
 
 import { storage } from './storage.js';
 
@@ -10,6 +12,9 @@ function defaultStats() {
     totalAttempts: 0,
     successfulAttempts: 0,
     failedAttempts: 0,
+    perfectAttempts: 0,
+    inputErrors: 0,   // WRONG_INPUT / WRONG_BUTTON / MISSING_BUTTON / EXTRA_INPUT
+    timingErrors: 0,  // TIMING_ERROR / MISS
     bestTime: null,
     times: [],
     fastestInput: null,
@@ -19,6 +24,8 @@ function defaultStats() {
   };
 }
 
+const TIMING_ERROR_KINDS = new Set(['TIMING ERROR', 'MISS']);
+
 export class Statistics extends EventTarget {
   constructor() {
     super();
@@ -26,13 +33,14 @@ export class Statistics extends EventTarget {
     this.data = stored ? { ...defaultStats(), ...stored } : defaultStats();
   }
 
-  recordAttempt({ success, totalTime = null, gaps = [], inputDurations = [] }) {
+  recordAttempt({ success, totalTime = null, gaps = [], inputDurations = [], isPerfect = false, errorKind = null }) {
     this.data.totalAttempts += 1;
 
     if (success) {
       this.data.successfulAttempts += 1;
       this.data.currentStreak += 1;
       this.data.bestStreak = Math.max(this.data.bestStreak, this.data.currentStreak);
+      if (isPerfect) this.data.perfectAttempts += 1;
       if (typeof totalTime === 'number') {
         this.data.times.push(totalTime);
         if (this.data.times.length > 200) this.data.times.shift();
@@ -41,6 +49,10 @@ export class Statistics extends EventTarget {
     } else {
       this.data.failedAttempts += 1;
       this.data.currentStreak = 0;
+      if (errorKind) {
+        if (TIMING_ERROR_KINDS.has(errorKind)) this.data.timingErrors += 1;
+        else this.data.inputErrors += 1;
+      }
     }
 
     if (gaps && gaps.length) {
@@ -66,6 +78,9 @@ export class Statistics extends EventTarget {
       totalAttempts: d.totalAttempts,
       successfulAttempts: d.successfulAttempts,
       failedAttempts: d.failedAttempts,
+      perfectAttempts: d.perfectAttempts,
+      inputErrors: d.inputErrors,
+      timingErrors: d.timingErrors,
       successRate,
       bestTime: d.bestTime,
       averageTime,

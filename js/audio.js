@@ -7,7 +7,10 @@ import { storage } from './storage.js';
 const TONE_PRESETS = {
   input: { freq: 260, duration: 0.035, type: 'square', gain: 0.12 },
   correct: { freq: 660, duration: 0.06, type: 'sine', gain: 0.18 },
+  perfect: { freqs: [660, 880], duration: 0.05, type: 'sine', gain: 0.18 },
   wrong: { freq: 140, duration: 0.18, type: 'sawtooth', gain: 0.18 },
+  timingError: { freq: 200, duration: 0.12, type: 'triangle', gain: 0.16 },
+  confirm: { freq: 440, duration: 0.05, type: 'sine', gain: 0.14 },
   success: { freqs: [523.25, 659.25, 783.99], duration: 0.09, type: 'triangle', gain: 0.18 },
   failure: { freqs: [220, 174.6], duration: 0.16, type: 'sawtooth', gain: 0.18 }
 };

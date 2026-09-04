@@ -21,19 +21,17 @@ export const ACTION_LABELS = {
   button4: 'Button 4'
 };
 
-// Default layout: Q/W/E/C for directions (left/down/right/up), J/K/U/I for attacks.
-// This mirrors a real "claw" style keyboard layout used by keyboard fighting-game
-// players: the left hand rests on Q-W-E with C reachable for "up", which is used
-// far less often than the other three directions.
+// Default layout: standard WASD for directions, U/I/J/K for the four attacks
+// (1=U, 2=I, 3=J, 4=K). Both halves remain fully remappable in Settings.
 export const DEFAULT_BINDINGS = {
-  left: 'KeyQ',
-  down: 'KeyW',
-  right: 'KeyE',
-  up: 'KeyC',
-  button1: 'KeyJ',
-  button2: 'KeyK',
-  button3: 'KeyU',
-  button4: 'KeyI'
+  up: 'KeyW',
+  left: 'KeyA',
+  down: 'KeyS',
+  right: 'KeyD',
+  button1: 'KeyU',
+  button2: 'KeyI',
+  button3: 'KeyJ',
+  button4: 'KeyK'
 };
 
 const SPECIAL_CODE_LABELS = {

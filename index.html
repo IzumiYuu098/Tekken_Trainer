@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Notation Lab — Fighting Game Combo Trainer</title>
-<meta name="description" content="Practice fighting-game directional inputs and combos on your keyboard, no controller required." />
+<meta name="description" content="Practice fighting-game directional inputs and combos on keyboard or DualShock 4, no game required." />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -15,10 +15,9 @@
       <span class="brand-mark" aria-hidden="true">⌁</span>
       <h1 class="app-title">Notation Lab<span class="app-subtitle">Fighting Game Combo Trainer</span></h1>
     </div>
-
     <div class="header-controls">
       <div class="field-inline">
-        <label for="theme-select">Controller theme</label>
+        <label for="theme-select">Theme</label>
         <select id="theme-select">
           <option value="fighting-game">Fighting Game</option>
           <option value="classic-arcade">Classic Arcade</option>
@@ -26,29 +25,31 @@
           <option value="leverless">Leverless</option>
         </select>
       </div>
+      <span id="gamepad-status-badge" class="status-badge status-off">Gamepad: Not Connected</span>
       <button id="mute-btn" class="icon-btn" type="button" aria-pressed="false" aria-label="Mute sound">🔊</button>
     </div>
   </header>
 
   <nav class="tab-nav" role="tablist" aria-label="Trainer sections">
-    <button class="tab-btn active" data-tab="practice" role="tab" aria-selected="true">Practice</button>
+    <button class="tab-btn active" data-tab="train" role="tab" aria-selected="true">Train</button>
+    <button class="tab-btn" data-tab="characters" role="tab" aria-selected="false">Characters</button>
+    <button class="tab-btn" data-tab="combos" role="tab" aria-selected="false">Combos</button>
     <button class="tab-btn" data-tab="movement" role="tab" aria-selected="false">Movement</button>
-    <button class="tab-btn" data-tab="challenge" role="tab" aria-selected="false">Challenge</button>
+    <button class="tab-btn" data-tab="progress" role="tab" aria-selected="false">Progress</button>
     <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false">Settings</button>
   </nav>
 
-  <main class="app-main">
+  <div class="app-body">
 
-    <!-- ================= LEFT: VIRTUAL CONTROLLER + LIVE INPUT ================= -->
-    <section class="panel controller-panel" aria-label="Virtual controller">
+    <!-- ============ PERSISTENT LEFT SIDEBAR: controller + live input ============ -->
+    <aside class="panel sidebar-panel" aria-label="Virtual controller and input history">
       <h2 class="panel-title">Virtual Controller</h2>
-
       <div id="virtual-controller" class="virtual-controller theme-fighting-game" data-theme="fighting-game">
         <div class="vc-dpad" role="group" aria-label="Directions">
           <button class="vc-btn vc-dir" data-action="up" aria-label="Up">▲</button>
-          <button class="vc-btn vc-dir" data-action="left" aria-label="Left">◀</button>
+          <button class="vc-btn vc-dir" data-action="left" aria-label="Left (Back)">◀</button>
           <div class="vc-dpad-center" aria-hidden="true"></div>
-          <button class="vc-btn vc-dir" data-action="right" aria-label="Right">▶</button>
+          <button class="vc-btn vc-dir" data-action="right" aria-label="Right (Forward)">▶</button>
           <button class="vc-btn vc-dir" data-action="down" aria-label="Down">▼</button>
         </div>
         <div class="vc-buttons" role="group" aria-label="Attack buttons">
@@ -59,109 +60,172 @@
         </div>
       </div>
 
-      <div class="live-input">
-        <div class="current-input-block">
-          <span class="field-label">Current input</span>
-          <div id="current-input-display" class="current-input" aria-live="polite">N</div>
-        </div>
+      <div class="current-input-block">
+        <span class="field-label">Current input (live, no delay)</span>
+        <div id="current-input-display" class="current-input" aria-live="polite">N</div>
+      </div>
 
-        <div class="history-block">
-          <div class="history-header">
-            <span class="field-label">Input history</span>
-            <div class="history-controls">
-              <select id="history-length-select" aria-label="History length">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="30">30</option>
-                <option value="50">50</option>
-              </select>
-              <button id="clear-history-btn" class="ghost-btn" type="button">Clear</button>
-            </div>
-          </div>
-          <div id="input-history-display" class="input-history" aria-live="polite"></div>
+      <div class="mini-stats" id="mini-stats">
+        <div><span id="mini-stat-attempts">0</span><label>Attempts</label></div>
+        <div><span id="mini-stat-rate">0%</span><label>Success</label></div>
+        <div><span id="mini-stat-streak">0</span><label>Streak</label></div>
+      </div>
+
+      <div class="history-block">
+        <div class="history-header">
+          <span class="field-label">Input History</span>
+        </div>
+        <div class="history-controls">
+          <select id="history-length-select" aria-label="History length">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+          <label class="checkbox-inline"><input id="history-autoscroll-checkbox" type="checkbox" checked /> Auto-scroll</label>
+          <button id="history-pause-btn" class="ghost-btn small" type="button">Pause</button>
+          <button id="clear-history-btn" class="ghost-btn small" type="button">Clear</button>
+        </div>
+        <ol id="input-history-display" class="input-history" aria-live="polite"></ol>
+      </div>
+
+      <div class="debug-block">
+        <label class="checkbox-inline"><input id="debug-mode-checkbox" type="checkbox" /> Debug mode</label>
+        <div id="debug-panel" class="debug-panel hidden">
+          <div><span>RAW</span><code id="debug-raw">—</code></div>
+          <div><span>STATE</span><code id="debug-state">—</code></div>
+          <div><span>NORMALIZED</span><code id="debug-normalized">—</code></div>
+          <div><span>TIMESTAMP</span><code id="debug-timestamp">—</code></div>
+          <div><span>DURATION</span><code id="debug-duration">—</code></div>
+          <div><span>SOURCE</span><code id="debug-source">—</code></div>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- ================= CENTER: TAB CONTENT ================= -->
-    <section class="panel tab-content-panel" aria-label="Trainer modes">
+    <!-- ============ MAIN: tab content ============ -->
+    <main class="panel main-panel" aria-label="Trainer content">
 
-      <div id="tab-practice" class="tab-panel active" role="tabpanel">
+      <!-- ===================== TRAIN ===================== -->
+      <div id="tab-train" class="tab-panel active" role="tabpanel">
         <div class="subsection">
           <div class="subsection-header">
-            <h3>Combo Builder</h3>
-            <button id="builder-record-btn" class="rec-btn" type="button">● Record</button>
+            <h3 id="train-active-label">Example target — build or load a real one from Combos, Movement, or Progress</h3>
           </div>
-
-          <div id="builder-sequence-display" class="token-row builder-empty" aria-live="polite">
-            <span class="placeholder">No inputs yet — record, click the controller, or add manually.</span>
-          </div>
-
-          <div class="button-row">
-            <button id="builder-add-current-btn" class="ghost-btn" type="button">Add Current</button>
-            <button id="builder-delete-last-btn" class="ghost-btn" type="button">Delete Last</button>
-            <button id="builder-clear-btn" class="ghost-btn" type="button">Clear</button>
-            <button id="builder-random-btn" class="ghost-btn" type="button">Random Combo</button>
-          </div>
-
-          <div class="manual-palette" id="builder-manual-palette" aria-label="Insert notation manually">
-            <button class="palette-btn" data-token="↑" type="button">↑</button>
-            <button class="palette-btn" data-token="↓" type="button">↓</button>
-            <button class="palette-btn" data-token="←" type="button">←</button>
-            <button class="palette-btn" data-token="→" type="button">→</button>
-            <button class="palette-btn" data-token="↖" type="button">↖</button>
-            <button class="palette-btn" data-token="↗" type="button">↗</button>
-            <button class="palette-btn" data-token="↙" type="button">↙</button>
-            <button class="palette-btn" data-token="↘" type="button">↘</button>
-            <span class="palette-divider" aria-hidden="true"></span>
-            <button class="palette-btn atk" data-token="1" type="button">1</button>
-            <button class="palette-btn atk" data-token="2" type="button">2</button>
-            <button class="palette-btn atk" data-token="3" type="button">3</button>
-            <button class="palette-btn atk" data-token="4" type="button">4</button>
-            <button class="palette-btn atk" data-token="1+2" type="button">1+2</button>
-            <button class="palette-btn atk" data-token="3+4" type="button">3+4</button>
-          </div>
-
-          <div class="save-row">
-            <input id="builder-combo-name-input" type="text" placeholder="Combo name" maxlength="40" />
-            <select id="builder-difficulty-select" aria-label="Combo difficulty">
-              <option>Easy</option>
-              <option selected>Normal</option>
-              <option>Hard</option>
-              <option>Expert</option>
-            </select>
-            <button id="builder-save-btn" class="primary-btn" type="button">Save Combo</button>
-            <button id="builder-use-as-target-btn" class="ghost-btn" type="button">Practice This</button>
-          </div>
-        </div>
-
-        <div class="subsection">
-          <h3>Practice</h3>
           <div class="practice-grid">
             <div class="practice-block">
               <span class="field-label">Target</span>
-              <div id="practice-target-display" class="token-row target-row"></div>
+              <div id="train-target-display" class="token-row target-row"></div>
             </div>
             <div class="practice-block">
-              <span class="field-label">Your input</span>
-              <div id="practice-progress-display" class="token-row progress-row"></div>
+              <span class="field-label">Your Input</span>
+              <div id="train-progress-display" class="token-row progress-row"></div>
             </div>
           </div>
           <div class="practice-meta">
             <div class="meta-stat">
               <span class="field-label">Timer</span>
-              <span id="practice-timer-display" class="meta-value mono">0.000s</span>
+              <span id="train-timer-display" class="meta-value mono">0.000s</span>
             </div>
             <div class="meta-stat">
               <span class="field-label">Result</span>
-              <span id="practice-result-display" class="meta-value result-badge">READY</span>
+              <span id="train-result-display" class="meta-value result-badge result-neutral">READY</span>
             </div>
-            <button id="practice-reset-btn" class="ghost-btn" type="button">Reset Attempt</button>
+            <button id="train-confirm-label-btn" class="primary-btn hidden" type="button">Confirm Step</button>
+            <button id="train-reset-btn" class="ghost-btn" type="button">Reset Attempt</button>
           </div>
-          <p id="practice-timing-note" class="hint-text">Timing: Normal (±60ms)</p>
+          <p id="train-feedback-text" class="hint-text"></p>
+          <p id="train-precision-note" class="hint-text">Precision: Normal (±60ms)</p>
         </div>
       </div>
 
+      <!-- ===================== CHARACTERS ===================== -->
+      <div id="tab-characters" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <h3>Characters</h3>
+          <div class="save-row">
+            <input id="add-character-name-input" type="text" placeholder="New character name" maxlength="30" />
+            <button id="add-character-btn" class="primary-btn" type="button">Add Character</button>
+          </div>
+          <ul id="character-list" class="character-list"></ul>
+        </div>
+        <div class="subsection">
+          <h3 id="character-detail-name">Select a character</h3>
+          <div id="character-detail-summary" class="hint-text"></div>
+          <div id="character-detail-combos" class="combo-cards"></div>
+        </div>
+      </div>
+
+      <!-- ===================== COMBOS ===================== -->
+      <div id="tab-combos" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <div class="subsection-header">
+            <h3>Combo Library</h3>
+            <div class="field-inline">
+              <label for="combo-character-filter">Character</label>
+              <select id="combo-character-filter"><option value="">All</option></select>
+              <label for="combo-difficulty-filter">Difficulty</label>
+              <select id="combo-difficulty-filter">
+                <option value="">All</option>
+                <option>Beginner</option><option>Intermediate</option><option>Advanced</option><option>Expert</option>
+              </select>
+            </div>
+          </div>
+          <div id="combo-list" class="combo-cards"></div>
+        </div>
+
+        <div class="subsection">
+          <h3>Add / Build a Combo</h3>
+          <p class="hint-text">Type a combo you learned from a video (e.g. "F, DF+1, WS+4, BT, DASH"), or build it live below and pull it into the box.</p>
+
+          <div class="button-row">
+            <button id="builder-record-btn" class="rec-btn" type="button">● Record</button>
+            <button id="builder-add-current-btn" class="ghost-btn" type="button">Add Current</button>
+            <button id="builder-delete-last-btn" class="ghost-btn" type="button">Delete Last</button>
+            <button id="builder-clear-btn" class="ghost-btn" type="button">Clear</button>
+            <button id="builder-use-in-form-btn" class="ghost-btn" type="button">Use in form ↓</button>
+          </div>
+          <div id="builder-sequence-display" class="token-row builder-empty"></div>
+
+          <div class="manual-palette" id="builder-manual-palette">
+            <button class="palette-btn" data-token="U" type="button">U</button>
+            <button class="palette-btn" data-token="D" type="button">D</button>
+            <button class="palette-btn" data-token="B" type="button">B</button>
+            <button class="palette-btn" data-token="F" type="button">F</button>
+            <button class="palette-btn" data-token="UB" type="button">UB</button>
+            <button class="palette-btn" data-token="UF" type="button">UF</button>
+            <button class="palette-btn" data-token="DB" type="button">DB</button>
+            <button class="palette-btn" data-token="DF" type="button">DF</button>
+            <span class="palette-divider" aria-hidden="true"></span>
+            <button class="palette-btn atk" data-token="1" type="button">1</button>
+            <button class="palette-btn atk" data-token="2" type="button">2</button>
+            <button class="palette-btn atk" data-token="3" type="button">3</button>
+            <button class="palette-btn atk" data-token="4" type="button">4</button>
+          </div>
+
+          <div class="combo-form">
+            <div class="field-inline">
+              <label for="combo-form-character">Character</label>
+              <select id="combo-form-character"></select>
+            </div>
+            <input id="combo-form-name" type="text" placeholder="Combo name" maxlength="60" />
+            <textarea id="combo-form-notation" rows="2" placeholder="e.g. F DF+1 WS+4 BT DASH"></textarea>
+            <div id="combo-form-preview" class="token-row"></div>
+            <div class="field-inline">
+              <label for="combo-form-difficulty">Difficulty</label>
+              <select id="combo-form-difficulty">
+                <option value="">Auto-estimate</option>
+                <option>Beginner</option><option>Intermediate</option><option>Advanced</option><option>Expert</option>
+              </select>
+            </div>
+            <textarea id="combo-form-notes" rows="2" placeholder="Notes (optional)"></textarea>
+            <input id="combo-form-source" type="text" placeholder="Source / reference link (optional)" />
+            <button id="combo-form-save-btn" class="primary-btn" type="button">Save Combo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== MOVEMENT ===================== -->
       <div id="tab-movement" class="tab-panel" role="tabpanel">
         <div class="subsection">
           <h3>Movement Drills</h3>
@@ -175,86 +239,166 @@
               <div id="movement-target-display" class="token-row target-row"></div>
             </div>
             <div class="practice-block">
-              <span class="field-label">Your input</span>
+              <span class="field-label">Your Input</span>
               <div id="movement-progress-display" class="token-row progress-row"></div>
             </div>
           </div>
           <div class="practice-meta">
             <div class="meta-stat">
               <span class="field-label">Result</span>
-              <span id="movement-result-display" class="meta-value result-badge">READY</span>
+              <span id="movement-result-display" class="meta-value result-badge result-neutral">READY</span>
             </div>
             <button id="movement-reset-btn" class="ghost-btn" type="button">Reset</button>
           </div>
         </div>
       </div>
 
-      <div id="tab-challenge" class="tab-panel" role="tabpanel">
+      <!-- ===================== PROGRESS ===================== -->
+      <div id="tab-progress" class="tab-panel" role="tabpanel">
+        <div class="subsection">
+          <div class="subsection-header">
+            <h3>Statistics</h3>
+            <button id="reset-stats-btn" class="ghost-btn small" type="button">Reset</button>
+          </div>
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card"><span class="stat-value" id="stat-total-attempts">0</span><span class="stat-label">Attempts</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-successful-attempts">0</span><span class="stat-label">Successes</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-failed-attempts">0</span><span class="stat-label">Failures</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-success-rate">0%</span><span class="stat-label">Success rate</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-perfect-attempts">0</span><span class="stat-label">Perfect</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-input-errors">0</span><span class="stat-label">Input errors</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-timing-errors">0</span><span class="stat-label">Timing errors</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-best-time">—</span><span class="stat-label">Best time</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-average-time">—</span><span class="stat-label">Average time</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-fastest-input">—</span><span class="stat-label">Fastest input</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-average-gap">—</span><span class="stat-label">Avg. input gap</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-current-streak">0</span><span class="stat-label">Current streak</span></div>
+            <div class="stat-card"><span class="stat-value" id="stat-best-streak">0</span><span class="stat-label">Best streak</span></div>
+          </div>
+        </div>
+
         <div class="subsection">
           <div class="subsection-header">
             <h3>Random Challenge</h3>
             <div class="field-inline">
               <label for="challenge-difficulty-select">Difficulty</label>
               <select id="challenge-difficulty-select">
-                <option>Easy</option>
-                <option selected>Normal</option>
-                <option>Hard</option>
-                <option>Expert</option>
+                <option>Easy</option><option selected>Normal</option><option>Hard</option><option>Expert</option>
               </select>
             </div>
           </div>
-          <button id="challenge-new-btn" class="primary-btn" type="button">New Challenge</button>
+          <p class="hint-text">Generates a random sequence and loads it into the Train tab. Timing strictness follows your current Precision Mode (Settings).</p>
+          <button id="challenge-new-btn" class="primary-btn" type="button">New Challenge → Train</button>
+        </div>
 
-          <div class="practice-grid">
-            <div class="practice-block">
-              <span class="field-label">Target</span>
-              <div id="challenge-target-display" class="token-row target-row"></div>
-            </div>
-            <div class="practice-block">
-              <span class="field-label">Your input</span>
-              <div id="challenge-progress-display" class="token-row progress-row"></div>
-            </div>
-          </div>
-          <div class="practice-meta">
-            <div class="meta-stat">
-              <span class="field-label">Timer</span>
-              <span id="challenge-timer-display" class="meta-value mono">0.000s</span>
-            </div>
-            <div class="meta-stat">
-              <span class="field-label">Result</span>
-              <span id="challenge-result-display" class="meta-value result-badge">READY</span>
+        <div class="subsection">
+          <div class="subsection-header">
+            <h3>Daily Practice</h3>
+            <div class="field-inline">
+              <label for="daily-length-select">Length</label>
+              <select id="daily-length-select">
+                <option>4</option><option selected>6</option><option>8</option><option>10</option>
+              </select>
+              <button id="daily-generate-btn" class="primary-btn" type="button">Generate Session</button>
             </div>
           </div>
+          <ol id="daily-session-list" class="daily-session-list"></ol>
+        </div>
+
+        <div class="subsection">
+          <h3>Skill Tree</h3>
+          <div id="skill-tree" class="skill-tree"></div>
+        </div>
+
+        <div class="subsection">
+          <h3>Backup</h3>
+          <div class="button-row">
+            <button id="export-data-btn" class="ghost-btn" type="button">Export Data (JSON)</button>
+            <label class="ghost-btn file-input-label">Import Data (JSON)<input id="import-data-input" type="file" accept="application/json" class="hidden" /></label>
+          </div>
+          <p id="import-export-note" class="hint-text"></p>
         </div>
       </div>
 
+      <!-- ===================== SETTINGS ===================== -->
       <div id="tab-settings" class="tab-panel" role="tabpanel">
         <div class="subsection">
-          <h3>Key Mapping</h3>
-          <p class="hint-text">Click a binding, then press the key you want to use.</p>
+          <h3>Input Source</h3>
+          <div class="field-inline">
+            <label for="input-source-select">Use</label>
+            <select id="input-source-select">
+              <option value="keyboard">Keyboard only</option>
+              <option value="gamepad">Gamepad only</option>
+              <option value="both" selected>Both</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3>Keyboard Mapping</h3>
+          <p class="hint-text">Click a binding, then press the key you want.</p>
           <div id="keybind-list" class="keybind-list">
-            <div class="keybind-row"><span>Up</span><button class="remap-btn" data-action="up" type="button">C</button></div>
-            <div class="keybind-row"><span>Down</span><button class="remap-btn" data-action="down" type="button">W</button></div>
-            <div class="keybind-row"><span>Left</span><button class="remap-btn" data-action="left" type="button">Q</button></div>
-            <div class="keybind-row"><span>Right</span><button class="remap-btn" data-action="right" type="button">E</button></div>
-            <div class="keybind-row"><span>Button 1</span><button class="remap-btn" data-action="button1" type="button">J</button></div>
-            <div class="keybind-row"><span>Button 2</span><button class="remap-btn" data-action="button2" type="button">K</button></div>
-            <div class="keybind-row"><span>Button 3</span><button class="remap-btn" data-action="button3" type="button">U</button></div>
-            <div class="keybind-row"><span>Button 4</span><button class="remap-btn" data-action="button4" type="button">I</button></div>
+            <div class="keybind-row"><span>Up</span><button class="remap-btn" data-action="up" type="button">W</button></div>
+            <div class="keybind-row"><span>Down</span><button class="remap-btn" data-action="down" type="button">S</button></div>
+            <div class="keybind-row"><span>Left (Back)</span><button class="remap-btn" data-action="left" type="button">A</button></div>
+            <div class="keybind-row"><span>Right (Forward)</span><button class="remap-btn" data-action="right" type="button">D</button></div>
+            <div class="keybind-row"><span>Button 1</span><button class="remap-btn" data-action="button1" type="button">U</button></div>
+            <div class="keybind-row"><span>Button 2</span><button class="remap-btn" data-action="button2" type="button">I</button></div>
+            <div class="keybind-row"><span>Button 3</span><button class="remap-btn" data-action="button3" type="button">J</button></div>
+            <div class="keybind-row"><span>Button 4</span><button class="remap-btn" data-action="button4" type="button">K</button></div>
           </div>
           <p id="keybind-conflict-warning" class="warning-text hidden" role="alert"></p>
         </div>
 
         <div class="subsection">
-          <h3>Timing &amp; Sound</h3>
+          <h3>Gamepad (DualShock 4 / standard-mapped controllers)</h3>
+          <p id="gamepad-detail" class="hint-text">Not connected. Plug in a controller and press any button.</p>
+          <div id="gamepad-mapping-list" class="keybind-list">
+            <div class="keybind-row"><span>Up</span><button class="gamepad-remap-btn" data-action="up" type="button">Button 12</button></div>
+            <div class="keybind-row"><span>Down</span><button class="gamepad-remap-btn" data-action="down" type="button">Button 13</button></div>
+            <div class="keybind-row"><span>Left (Back)</span><button class="gamepad-remap-btn" data-action="left" type="button">Button 14</button></div>
+            <div class="keybind-row"><span>Right (Forward)</span><button class="gamepad-remap-btn" data-action="right" type="button">Button 15</button></div>
+            <div class="keybind-row"><span>Button 1</span><button class="gamepad-remap-btn" data-action="button1" type="button">Button 0</button></div>
+            <div class="keybind-row"><span>Button 2</span><button class="gamepad-remap-btn" data-action="button2" type="button">Button 1</button></div>
+            <div class="keybind-row"><span>Button 3</span><button class="gamepad-remap-btn" data-action="button3" type="button">Button 2</button></div>
+            <div class="keybind-row"><span>Button 4</span><button class="gamepad-remap-btn" data-action="button4" type="button">Button 3</button></div>
+          </div>
+          <p id="gamepad-conflict-warning" class="warning-text hidden" role="alert"></p>
+          <button id="gamepad-reset-btn" class="ghost-btn small" type="button">Reset Gamepad Defaults</button>
+        </div>
+
+        <div class="subsection">
+          <h3>Input Recognition</h3>
           <div class="field-inline">
-            <label for="timing-difficulty-select">Timing difficulty</label>
-            <select id="timing-difficulty-select">
-              <option value="strict">Strict (±30ms)</option>
-              <option value="normal" selected>Normal (±60ms)</option>
-              <option value="relaxed">Relaxed (±100ms)</option>
+            <label for="socd-mode-select">SOCD mode</label>
+            <select id="socd-mode-select">
+              <option value="neutral">Neutral (opposing directions cancel)</option>
+              <option value="last">Last Input Priority</option>
+              <option value="first">First Input Priority</option>
             </select>
           </div>
+          <div class="field-inline">
+            <label for="chord-window-select">Chord window</label>
+            <select id="chord-window-select">
+              <option value="20">20ms</option>
+              <option value="30">30ms</option>
+              <option value="40" selected>40ms</option>
+              <option value="50">50ms</option>
+            </select>
+          </div>
+          <div class="field-inline">
+            <label for="precision-mode-select">Precision mode</label>
+            <select id="precision-mode-select">
+              <option value="relaxed">Relaxed (±120ms)</option>
+              <option value="normal" selected>Normal (±60ms)</option>
+              <option value="strict">Strict (±30ms, fails on timing/stray input)</option>
+              <option value="perfect">Perfect (±15ms, no auto-restart)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3>Presentation</h3>
           <div class="field-inline">
             <label for="sound-toggle-checkbox">Sound feedback</label>
             <input id="sound-toggle-checkbox" type="checkbox" checked />
@@ -272,41 +416,11 @@
         </div>
       </div>
 
-    </section>
-
-    <!-- ================= RIGHT: STATISTICS + SAVED COMBOS ================= -->
-    <section class="panel side-panel" aria-label="Statistics and saved combos">
-      <div class="subsection">
-        <div class="subsection-header">
-          <h2 class="panel-title">Statistics</h2>
-          <button id="reset-stats-btn" class="ghost-btn small" type="button">Reset</button>
-        </div>
-        <div class="stats-grid" id="stats-grid">
-          <div class="stat-card"><span class="stat-value" id="stat-total-attempts">0</span><span class="stat-label">Attempts</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-successful-attempts">0</span><span class="stat-label">Successes</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-failed-attempts">0</span><span class="stat-label">Failures</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-success-rate">0%</span><span class="stat-label">Success rate</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-best-time">—</span><span class="stat-label">Best time</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-average-time">—</span><span class="stat-label">Average time</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-fastest-input">—</span><span class="stat-label">Fastest input</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-average-gap">—</span><span class="stat-label">Avg. input gap</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-current-streak">0</span><span class="stat-label">Current streak</span></div>
-          <div class="stat-card"><span class="stat-value" id="stat-best-streak">0</span><span class="stat-label">Best streak</span></div>
-        </div>
-      </div>
-
-      <div class="subsection">
-        <h2 class="panel-title">Saved Combos</h2>
-        <ul id="saved-combos-list" class="saved-combos-list">
-          <li class="empty-note">No combos saved yet.</li>
-        </ul>
-      </div>
-    </section>
-
-  </main>
+    </main>
+  </div>
 
   <footer class="app-footer">
-    <p>This is a fighting game notation trainer, where you can practice moveset and memorize for beginner. THE SYSTEM WAS MADE BY JEF</p>
+    <p>An original, keyboard-and-gamepad input trainer. Not affiliated with, endorsed by, or a reproduction of any commercial fighting game.</p>
   </footer>
 </div>
 

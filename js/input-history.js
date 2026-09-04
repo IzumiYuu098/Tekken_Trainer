@@ -1,73 +1,43 @@
 // input-history.js
-// Converts a live stream of controller-state "change" events into a discrete
-// timeline of notated inputs. The key design rule: a NEW history entry is only
-// created when the *logical signature* (direction + buttons) actually changes.
-// Holding a direction for two seconds produces exactly one entry with a long
-// duration — never a flood of repeated identical entries.
+// A thin, dumb log of already-normalized InputEvents produced by
+// input-events.js. This file intentionally contains NO chord/timing logic
+// anymore — that all lives in the event engine. This file only: stores
+// events (up to maxLength), supports pausing, and tells the UI to
+// auto-scroll or not.
 
-import { combinedNotation, classifyEntryType } from './notation.js';
-
-const DEFAULT_MAX_LENGTH = 20;
+const DEFAULT_MAX_LENGTH = 50;
+export const HISTORY_LENGTH_OPTIONS = [10, 20, 30, 50, 100];
 
 export class InputHistory extends EventTarget {
-  constructor(controllerState, options = {}) {
+  constructor(inputEventEngine, options = {}) {
     super();
-    this.controllerState = controllerState;
+    this.inputEventEngine = inputEventEngine;
     this.maxLength = options.maxLength || DEFAULT_MAX_LENGTH;
+    this.paused = false;
     this.entries = [];
 
-    this._currentNotation = 'N';
-    this._currentType = 'direction';
-    this._currentStart = performance.now();
+    this._onEvent = this._onEvent.bind(this);
+    inputEventEngine.addEventListener('event', this._onEvent);
+  }
 
-    this._onChange = this._onChange.bind(this);
-    controllerState.addEventListener('change', this._onChange);
+  _onEvent(e) {
+    if (this.paused) return;
+    const entry = e.detail.event;
+    this.entries.push(entry);
+    if (this.entries.length > this.maxLength) this.entries.shift();
+    this.dispatchEvent(new CustomEvent('entry', { detail: { entry } }));
+    this.dispatchEvent(new CustomEvent('history', { detail: { entries: this.getEntries() } }));
   }
 
   setMaxLength(n) {
     this.maxLength = n;
-    if (this.entries.length > n) {
-      this.entries = this.entries.slice(this.entries.length - n);
-    }
+    if (this.entries.length > n) this.entries = this.entries.slice(this.entries.length - n);
     this.dispatchEvent(new CustomEvent('history', { detail: { entries: this.getEntries() } }));
   }
 
-  _onChange(e) {
-    const { timestamp, state } = e.detail;
-    const notation = combinedNotation(state);
-
-    if (notation === this._currentNotation) {
-      // Same logical signature (e.g. a redundant change event) — nothing to log.
-      return;
-    }
-
-    // The PREVIOUS signature just ended. If it was an actual input (not neutral),
-    // finalize it into history with its full held duration.
-    if (this._currentNotation !== 'N') {
-      const duration = timestamp - this._currentStart;
-      const entry = {
-        type: this._currentType,
-        notation: this._currentNotation,
-        timestamp: this._currentStart,
-        duration
-      };
-      this.entries.push(entry);
-      if (this.entries.length > this.maxLength) this.entries.shift();
-      this.dispatchEvent(new CustomEvent('entry', { detail: { entry } }));
-      this.dispatchEvent(new CustomEvent('history', { detail: { entries: this.getEntries() } }));
-    }
-
-    this._currentNotation = notation;
-    this._currentType = classifyEntryType(state);
-    this._currentStart = timestamp;
-
-    this.dispatchEvent(new CustomEvent('current', {
-      detail: { notation, type: this._currentType, timestamp }
-    }));
-  }
-
-  getCurrent() {
-    return { notation: this._currentNotation, type: this._currentType, since: this._currentStart };
+  setPaused(paused) {
+    this.paused = !!paused;
+    this.dispatchEvent(new CustomEvent('pause', { detail: { paused: this.paused } }));
   }
 
   getEntries() {

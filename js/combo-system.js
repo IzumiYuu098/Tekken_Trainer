@@ -1,25 +1,16 @@
 // combo-system.js
-// Two related but distinct responsibilities live here:
-//   ComboBuilder  - the transient, in-progress sequence a user is constructing
-//                   (by recording live inputs, clicking the virtual controller,
-//                   or adding notation tokens manually).
-//   ComboLibrary  - persisted, named combos (save/load/rename/delete) backed by
-//                   localStorage via storage.js, including per-combo run stats.
-//
-// A small random-sequence generator is also exported here since both the combo
-// builder's "Random Combo" button and the Random Challenge system need it.
+// The transient, in-progress combo builder: record live input, or build a
+// sequence via the manual notation editor / random generator. Persisted,
+// named combos now live in characters.js (per-character combo library) —
+// this file is only the "workbench" for constructing one before saving it.
 
-import { storage } from './storage.js';
-
-function createId() {
-  return 'combo_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-}
+import { stepFromLiveEvent } from './combo-notation.js';
 
 export class ComboBuilder extends EventTarget {
   constructor(inputHistory) {
     super();
     this.inputHistory = inputHistory;
-    this.sequence = [];
+    this.steps = [];
     this.recording = false;
     this._referenceTimestamps = [];
 
@@ -29,15 +20,15 @@ export class ComboBuilder extends EventTarget {
 
   _onEntry(e) {
     if (!this.recording) return;
-    this.addToken(e.detail.entry.notation, e.detail.entry.timestamp);
+    this.addStep(stepFromLiveEvent(e.detail.entry), e.detail.entry.timestamp);
   }
 
   startRecording() {
     this.recording = true;
-    this.sequence = [];
+    this.steps = [];
     this._referenceTimestamps = [];
     this.dispatchEvent(new CustomEvent('recording', { detail: { recording: true } }));
-    this.dispatchEvent(new CustomEvent('change', { detail: { sequence: this.getSequence() } }));
+    this.dispatchEvent(new CustomEvent('change', { detail: { steps: this.getSteps() } }));
   }
 
   stopRecording() {
@@ -45,35 +36,39 @@ export class ComboBuilder extends EventTarget {
     this.dispatchEvent(new CustomEvent('recording', { detail: { recording: false } }));
   }
 
-  addToken(token, timestamp = performance.now()) {
-    this.sequence.push(token);
+  addStep(step, timestamp = performance.now()) {
+    this.steps.push(step);
     this._referenceTimestamps.push(timestamp);
-    this.dispatchEvent(new CustomEvent('change', { detail: { sequence: this.getSequence() } }));
+    this.dispatchEvent(new CustomEvent('change', { detail: { steps: this.getSteps() } }));
   }
 
   deleteLast() {
-    this.sequence.pop();
+    this.steps.pop();
     this._referenceTimestamps.pop();
-    this.dispatchEvent(new CustomEvent('change', { detail: { sequence: this.getSequence() } }));
+    this.dispatchEvent(new CustomEvent('change', { detail: { steps: this.getSteps() } }));
   }
 
   clear() {
-    this.sequence = [];
+    this.steps = [];
     this._referenceTimestamps = [];
-    this.dispatchEvent(new CustomEvent('change', { detail: { sequence: this.getSequence() } }));
+    this.dispatchEvent(new CustomEvent('change', { detail: { steps: this.getSteps() } }));
   }
 
-  setSequence(seq) {
-    this.sequence = seq.slice();
+  setSteps(steps) {
+    this.steps = steps.slice();
     this._referenceTimestamps = [];
-    this.dispatchEvent(new CustomEvent('change', { detail: { sequence: this.getSequence() } }));
+    this.dispatchEvent(new CustomEvent('change', { detail: { steps: this.getSteps() } }));
   }
 
-  getSequence() {
-    return this.sequence.slice();
+  getSteps() {
+    return this.steps.slice();
   }
 
-  /** Gaps (ms) between consecutive recorded tokens, or null if not recorded live. */
+  getNotationText() {
+    return this.steps.map((s) => s.notation).join(' \u2192 ');
+  }
+
+  /** Gaps (ms) between consecutive recorded steps, or null if not recorded live. */
   getReferenceGaps() {
     if (this._referenceTimestamps.length < 2) return null;
     const gaps = [];
@@ -84,88 +79,19 @@ export class ComboBuilder extends EventTarget {
   }
 }
 
-export class ComboLibrary extends EventTarget {
-  constructor() {
-    super();
-    this.combos = storage.getSavedCombos() || [];
-  }
-
-  list() {
-    return this.combos.slice();
-  }
-
-  get(id) {
-    return this.combos.find((c) => c.id === id) || null;
-  }
-
-  save({ name, inputs, difficulty = 'Normal', referenceGaps = null }) {
-    const combo = {
-      id: createId(),
-      name: name && name.trim() ? name.trim() : `Combo ${this.combos.length + 1}`,
-      inputs: inputs.slice(),
-      referenceGaps: referenceGaps ? referenceGaps.slice() : null,
-      difficulty,
-      createdAt: Date.now(),
-      bestTime: null,
-      averageTime: null,
-      attempts: 0,
-      successes: 0
-    };
-    this.combos.push(combo);
-    this._persist();
-    this.dispatchEvent(new CustomEvent('change', { detail: { combos: this.list() } }));
-    return combo;
-  }
-
-  rename(id, newName) {
-    const combo = this.get(id);
-    if (!combo || !newName || !newName.trim()) return false;
-    combo.name = newName.trim();
-    this._persist();
-    this.dispatchEvent(new CustomEvent('change', { detail: { combos: this.list() } }));
-    return true;
-  }
-
-  remove(id) {
-    this.combos = this.combos.filter((c) => c.id !== id);
-    this._persist();
-    this.dispatchEvent(new CustomEvent('change', { detail: { combos: this.list() } }));
-  }
-
-  recordAttempt(id, { success, totalTime }) {
-    const combo = this.get(id);
-    if (!combo) return;
-    combo.attempts += 1;
-    if (success && typeof totalTime === 'number') {
-      const prevSuccesses = combo.successes;
-      combo.successes += 1;
-      combo.bestTime = combo.bestTime === null ? totalTime : Math.min(combo.bestTime, totalTime);
-      combo.averageTime = combo.averageTime === null
-        ? totalTime
-        : (combo.averageTime * prevSuccesses + totalTime) / combo.successes;
-    }
-    this._persist();
-    this.dispatchEvent(new CustomEvent('change', { detail: { combos: this.list() } }));
-  }
-
-  _persist() {
-    storage.setSavedCombos(this.combos);
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Random sequence generation (combo builder "Random Combo" + Random Challenge)
+// Random sequence generation (Random Challenge system + movement variety)
 // ---------------------------------------------------------------------------
 
 export const DIFFICULTY_PRESETS = {
-  Easy: { length: [2, 3], diagonalChance: 0.15, simultaneousChance: 0.0, buttonChance: 0.4, timingWindow: 'relaxed' },
-  Normal: { length: [3, 4], diagonalChance: 0.35, simultaneousChance: 0.1, buttonChance: 0.5, timingWindow: 'normal' },
-  Hard: { length: [4, 6], diagonalChance: 0.55, simultaneousChance: 0.25, buttonChance: 0.6, timingWindow: 'normal' },
-  Expert: { length: [5, 8], diagonalChance: 0.75, simultaneousChance: 0.4, buttonChance: 0.7, timingWindow: 'strict' }
+  Easy: { length: [2, 3], diagonalChance: 0.15, simultaneousChance: 0.0, buttonChance: 0.4, precisionMode: 'relaxed' },
+  Normal: { length: [3, 4], diagonalChance: 0.35, simultaneousChance: 0.1, buttonChance: 0.5, precisionMode: 'normal' },
+  Hard: { length: [4, 6], diagonalChance: 0.55, simultaneousChance: 0.25, buttonChance: 0.6, precisionMode: 'normal' },
+  Expert: { length: [5, 8], diagonalChance: 0.75, simultaneousChance: 0.4, buttonChance: 0.7, precisionMode: 'strict' }
 };
 
-const CARDINALS = ['↑', '↓', '←', '→'];
-const DIAGONALS = ['↖', '↗', '↙', '↘'];
+const CARDINALS = ['U', 'D', 'B', 'F'];
+const DIAGONALS = ['UB', 'UF', 'DB', 'DF'];
 const BUTTONS = ['1', '2', '3', '4'];
 
 function pick(arr) {
@@ -197,11 +123,11 @@ export function generateRandomSequence(difficulty = 'Normal') {
           button = nums.join('+');
         }
       }
-      token = `${dir} ${button}`;
+      token = `${dir}+${button}`;
     }
 
     tokens.push(token);
   }
 
-  return { tokens, difficulty, timingWindow: preset.timingWindow };
+  return { tokens, difficulty, precisionMode: preset.precisionMode };
 }

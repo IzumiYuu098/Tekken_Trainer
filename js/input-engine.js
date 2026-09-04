@@ -11,11 +11,17 @@ export class InputEngine extends EventTarget {
     super();
     this._held = new Map(); // code -> pressTimestamp
     this._running = false;
+    this.enabled = true;
 
     this._onKeyDown = this._onKeyDown.bind(this);
     this._onKeyUp = this._onKeyUp.bind(this);
     this._onBlur = this._onBlur.bind(this);
     this._onVisibility = this._onVisibility.bind(this);
+  }
+
+  setEnabled(enabled) {
+    this.enabled = !!enabled;
+    if (!this.enabled) this._onBlur(); // clear any held keys immediately when disabled
   }
 
   start() {
@@ -38,7 +44,7 @@ export class InputEngine extends EventTarget {
 
   _onKeyDown(e) {
     const code = e.code;
-    if (!code) return;
+    if (!code || !this.enabled) return;
 
     // Ignore keystrokes typed into a text field (e.g. renaming a combo, typing
     // a settings value) so the trainer doesn't eat the user's typing.

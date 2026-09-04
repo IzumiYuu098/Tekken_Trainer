@@ -1,47 +1,70 @@
-# Notation Lab — Fighting Game Combo Trainer
+# Notation Lab — Fighting Game Combo Trainer (v2)
 
-A browser-based input trainer that turns your keyboard into a virtual leverless
-controller so you can practice fighting-game directional notation and combos
-without owning a game or a controller. 100% original code and visual design —
-inspired by fighting-game training tools and Tekken-style numeric notation, but
-not a copy of any specific game's assets, UI, or source code.
+A browser-based input trainer for practicing fighting-game notation and
+combos on keyboard **or** a DualShock 4 (or any "standard"-mapped gamepad),
+with a per-character combo library, a beginner→advanced training roadmap,
+and precise, structured input diagnostics. 100% original code and visual
+design. No backend, no build step, no account, no external dependencies.
 
-Runs entirely client-side: HTML5, CSS3, and vanilla ES6 modules. No backend, no
-build step, no account, no external APIs, no dependencies.
+This is a from-the-architecture-up rewrite of the input-recognition engine.
+If you used the previous version, your old saved combos are **not** lost —
+see [Upgrading from v1](#upgrading-from-v1) below.
+
+---
+
+## What changed in v2 (highlights)
+
+- **Fixed the input-history bug at the architecture level.** A new chord
+  "settle window" recognizer replaces the old signature-change logging, so
+  `D`, `F`, `1` pressed within a few milliseconds of each other now produce
+  exactly one `DF+1` history event — never a flood of intermediate states.
+- **New default keyboard layout:** `W/A/S/D` for directions, `U/I/J/K` for
+  attacks 1–4.
+- **Tekken-style letter notation** (`U`/`D`/`B`/`F`, `DF`/`DB`/`UF`/`UB`,
+  `1`–`4`, joined with `+`) instead of arrow glyphs.
+- **DualShock 4 / gamepad support**, feeding the exact same input pipeline as
+  the keyboard — there is one authoritative combo engine, not two.
+- **Per-character combo library** with a flexible notation editor that
+  accepts real inputs, movement macros (`DASH`, `BACKDASH`), and
+  unverifiable stance/movement **labels** (`WS`, `FC`, `BT`, `DEW`, ...) side
+  by side.
+- **Precision modes** (Relaxed / Normal / Strict / Perfect) with structured
+  diagnostics: `WRONG BUTTON`, `MISSING BUTTON`, `EXTRA INPUT`,
+  `TIMING ERROR` — not just a generic "wrong".
+- **A 10-level training roadmap** with real, measurable skill tracking
+  (`NOT_STARTED → LEARNING → PRACTICING → CONSISTENT → MASTERED`).
+- **Daily Practice** session generator, **Export/Import** your whole library
+  as JSON, and a **Debug mode** showing raw input → state → normalized event.
 
 ---
 
 ## Features
 
-- **Keyboard input engine** — clean keydown/keyup tracking with an auto-repeat
-  guard (holding a key is one logical press, not a flood of repeats), held-key
-  tracking, and automatic clearing of all inputs when the window loses focus.
-- **Virtual leverless controller** — an 8-button-equivalent (4 directions + 4
-  attacks) on-screen controller that lights up in real time and can also be
-  clicked/tapped directly.
-- **Fighting-game notation engine** — converts raw input into ↑ ↓ ← → ↖ ↗ ↙ ↘
-  and 1/2/3/4 (with simultaneous presses like `1+2`), correctly collapsing
-  simultaneous directions (e.g. left+down → `↙`, never `←` then `↓`).
-- **Input history & combo recording** — a live, scrolling history of every
-  input with type/notation/timestamp/duration, configurable length (10–50),
-  and one-button combo recording.
-- **Combo builder** — build a target combo by recording live input, clicking
-  the virtual controller, or inserting notation tokens manually; save, load,
-  rename, and delete named combos (persisted locally).
-- **Practice mode** — compares your live input against a target combo and
-  reports `PERFECT` / `SUCCESS` / `EARLY` / `LATE` / `WRONG INPUT` / `MISS` /
-  `COMBO COMPLETE`, with a live timer and configurable timing tolerance.
-- **Movement training** — a modular set of directional drills (dashes,
-  backdashes, diagonals, transitional motions, KBD-style cycling, etc).
-- **Random challenge system** — generates a fresh random sequence at four
-  difficulty tiers (Easy/Normal/Hard/Expert), affecting length, diagonal
-  frequency, and simultaneous-button frequency.
-- **Statistics** — attempts, success rate, best/average time, fastest input,
-  average input gap, current streak, and best streak, persisted locally.
-- **Full remapping** — click any binding and press a new key; conflicting
-  bindings are detected and flagged.
-- **Four controller themes**, synthesized audio feedback (Web Audio API, no
-  external sound files), and a responsive layout for desktop/tablet/mobile.
+- Keyboard input engine with an auto-repeat guard, held-key tracking, and
+  automatic clearing of all inputs on focus loss.
+- Gamepad engine polling via `requestAnimationFrame` (only while a pad is
+  connected), with connect/disconnect handling and a press-to-calibrate
+  remapping UI.
+- SOCD (opposing-direction) handling with three selectable, documented
+  policies: Neutral, Last Input Priority, First Input Priority.
+- A chord-window input-event recognizer (configurable 20/30/40/50ms) that
+  turns raw presses into meaningful, normalized events — see
+  [How the input engine works](#how-the-input-engine-works).
+- A long, numbered, scrollable input history (10/20/30/50/100 entries) with
+  auto-scroll and pause toggles, and the most recent input visually
+  emphasized.
+- A live "Current Input" readout with **zero added latency** — only the
+  history log is debounced, never the on-screen feedback.
+- Character profiles (starts with "Lili" — an empty profile you fill in
+  yourself, not fabricated move data) and a per-character combo library.
+- A flexible combo notation editor: type `F DF+1 WS+4 BT DASH` and it's
+  parsed into real inputs, a macro expansion, and unverifiable labels.
+- Practice mode with structured, per-step diagnostics and a rich feedback
+  line, not just "correct/wrong".
+- A 10-level Beginner → Mastery training roadmap with real tracked stats.
+- Daily Practice session generator; Random Challenge generator (Easy →
+  Expert); Statistics; JSON export/import; four visual themes; synthesized
+  audio feedback; a Debug panel.
 
 ---
 
@@ -53,22 +76,27 @@ fighting-game-trainer/
 ├── css/
 │   └── style.css
 ├── js/
-│   ├── app.js               entry point — wires every module together
+│   ├── app.js               composition root — wires every module together
 │   ├── input-engine.js      raw keyboard capture (repeat guard, focus loss)
+│   ├── gamepad-engine.js    raw gamepad capture (rAF poll loop, calibration)
 │   ├── key-mapper.js        physical key <-> logical action bindings
-│   ├── controller-state.js  unified state for keyboard + virtual controller
-│   ├── notation.js          state -> fighting-game notation (pure functions)
-│   ├── input-history.js     turns state changes into a discrete input log
-│   ├── combo-system.js      combo builder/recorder + saved combo library
-│   ├── trainer.js           ComboMatcher: target-vs-live comparison engine
-│   ├── movement-training.js modular list of movement drills
+│   ├── gamepad-mapper.js    physical gamepad button <-> logical action
+│   ├── controller-state.js  the ONE shared state, fed by every input source
+│   ├── notation.js          state -> Tekken-style notation (SOCD, pure fns)
+│   ├── input-events.js      chord/settle-window meaningful-event recognizer
+│   ├── input-history.js     the log (thin — no timing logic lives here)
+│   ├── combo-notation.js    free-text combo parser (inputs/macros/labels)
+│   ├── combo-system.js      live combo builder/recorder + random generator
+│   ├── characters.js        character + combo library (persisted, v1 migration)
+│   ├── trainer.js           ComboMatcher: structured comparison + diagnostics
+│   ├── progression.js       10-level roadmap, skill tracking, daily practice
+│   ├── movement-training.js Movement tab's drill list
 │   ├── timing.js            performance.now()-based timing utilities
 │   ├── statistics.js        persisted performance statistics
 │   ├── audio.js             synthesized Web Audio feedback tones
-│   ├── storage.js           localStorage read/write wrapper
+│   ├── storage.js           versioned localStorage wrapper + export/import
 │   └── ui.js                all DOM wiring (the only file that touches the DOM)
-├── assets/
-│   └── icons/                (reserved — the UI currently uses text/emoji glyphs)
+├── assets/icons/
 └── README.md
 ```
 
@@ -76,203 +104,298 @@ fighting-game-trainer/
 
 ## Running it locally
 
-Because the app uses ES6 modules (`<script type="module">`), most browsers
-block module loading over the bare `file://` protocol (CORS). Serve the folder
-with any static file server:
+ES modules need to be served over `http(s)://`, not opened directly as a
+`file://` path (most browsers block module imports there). From the folder:
 
 ```bash
-# Option 1: Node (no install needed if you have npx)
-npx serve fighting-game-trainer
-
-# Option 2: Python 3
-cd fighting-game-trainer
+npx serve .
+# or
 python3 -m http.server 8080
-
-# Option 3: VS Code
-# Right-click index.html -> "Open with Live Server"
 ```
 
-Then open the printed local address (e.g. `http://localhost:8080`) in a
-modern desktop browser (Chrome, Firefox, Edge, or Safari).
+Then open the printed local address in Chrome, Firefox, Edge, or Safari.
+
+---
+
+## Putting it on GitHub so your friends can use it (no downloads needed)
+
+**GitHub Pages** is the right tool here — once it's live, your friends just
+open a URL in their browser. No Python, no Node, no cloning, no local
+server. Only *you* need to do the one-time setup below.
+
+1. **Create a repository.** On github.com, click **New repository**, give it
+   a name (e.g. `notation-lab`), keep it **Public** (GitHub Pages on a free
+   account requires a public repo, or a private one on a paid plan), and
+   create it without a README (you already have one).
+2. **Upload the files.** Easiest path with no git experience: on the new
+   repo's page, click **Add file → Upload files**, drag in this entire
+   `fighting-game-trainer` folder's *contents* (`index.html`, `css/`, `js/`,
+   `assets/`, `README.md` — not a zip, the actual files/folders), and commit.
+   (If you're comfortable with git: `git init`, `git add .`,
+   `git commit -m "v2"`, `git remote add origin <your repo URL>`,
+   `git push -u origin main`.)
+3. **Enable Pages.** In the repo, go to **Settings → Pages**. Under
+   "Build and deployment", set **Source** to **Deploy from a branch**, pick
+   the `main` branch and the `/ (root)` folder, then **Save**.
+4. **Wait ~1 minute, then get the URL.** Reload Settings → Pages; GitHub
+   shows a live link like `https://yourname.github.io/notation-lab/`. That's
+   the link to send your friends.
+5. **Updating later:** any time you push new files to the repo (or upload
+   changed files through the web UI), Pages redeploys automatically within
+   a minute or two.
+
+Nothing else is required — GitHub Pages serves static files over HTTPS,
+which is exactly what this trainer needs and solves the local-server
+requirement above permanently.
 
 ---
 
 ## Keyboard controls (default)
 
-Directions use a "claw" layout so your left hand can reach every direction and
-attack without moving:
+| Action          | Key |
+|-----------------|-----|
+| Up              | `W` |
+| Down            | `S` |
+| Left (Back)     | `A` |
+| Right (Forward) | `D` |
+| Button 1        | `U` |
+| Button 2        | `I` |
+| Button 3        | `J` |
+| Button 4        | `K` |
 
-| Action    | Key |
-|-----------|-----|
-| Left      | `Q` |
-| Down      | `W` |
-| Right     | `E` |
-| Up        | `C` |
-| Button 1  | `J` |
-| Button 2  | `K` |
-| Button 3  | `U` |
-| Button 4  | `I` |
+Fully remappable in **Settings → Keyboard Mapping**.
 
-Every binding can be changed in **Settings → Key Mapping**: click a binding,
-then press the key you want. Conflicting bindings (two actions sharing one
-key) are detected and flagged — you decide which one to change.
+## Gamepad (DualShock 4) setup
+
+Plug in the controller (wired, or paired over Bluetooth if your OS/browser
+supports it) and press any button — Settings shows "Connected" once the
+browser detects it. Default mapping assumes the browser reports the
+Gamepad API's **"standard"** mapping (true for DS4 on Chrome/Firefox/Edge in
+the large majority of cases): D-pad on buttons 12–15, the four face buttons
+on 0–3. If your buttons don't match, recalibrate any binding in
+**Settings → Gamepad**: click it, then press the physical button you want.
+
+Only the digital D-pad is used for directions (not the analog stick) —
+this is intentional: the brief prioritizes precise, verifiable digital input
+over an analog stick's deadzone/threshold guesswork.
+
+Set **Settings → Input Source** to Keyboard only / Gamepad only / Both.
+"Both" (the default) lets either device drive the same trainer at once.
 
 ---
 
-## Architecture
+## How the input engine works
 
-Data flows in one direction, and no layer reaches "backwards" into a later one:
+Five layers, in order, and there is exactly **one** instance of each — the
+keyboard and the gamepad both feed the same `ControllerState` through the
+same `press()`/`release()` calls, so there is no separate combo logic per
+device:
 
 ```
-KEYBOARD
-   ↓
-INPUT ENGINE       (input-engine.js)   raw key codes, repeat-guarded, focus-safe
-   ↓
-KEY MAPPER         (key-mapper.js)     physical code -> logical action
-   ↓
-CONTROLLER STATE   (controller-state.js) the single boolean state object
-   ↓  ↖ virtual controller clicks also feed in here directly
-NOTATION           (notation.js)       pure state -> symbol functions
-   ↓
-INPUT HISTORY      (input-history.js)  state changes -> discrete logged entries
-   ↓
-COMBO SYSTEM       (combo-system.js)   builder/recorder + saved combo library
-   ↓
-TRAINER            (trainer.js)        ComboMatcher: live input vs. target
-   ↓
-TIMING             (timing.js)         gap classification, sequence stats
-   ↓
-STATISTICS         (statistics.js)     persisted aggregate performance
-   ↓
-UI                 (ui.js)             the only module that touches the DOM
+KEYBOARD ──┐
+           ├─> raw press/release ──> CONTROLLER STATE (the one shared object)
+GAMEPAD ───┘                              │
+                                    SOCD resolution (Neutral/Last/First)
+                                           │
+                              INPUT EVENT ENGINE (chord "settle window")
+                                     │                    │
+                          'current' (instant)      'event' (debounced)
+                                     │                    │
+                          live "Current Input"      INPUT HISTORY log
+                                                           │
+                                                    COMBO BUILDER /
+                                                    TRAINER (ComboMatcher)
 ```
 
-`app.js` is the composition root: it creates one instance of each system,
-wires the handful of cross-cutting subscriptions (e.g. "every finalized input
-also feeds all three ComboMatcher instances"), and hands everything to
-`initUI()`. Because the virtual controller and the keyboard both write into
-the same `ControllerState` object, every other system (notation, history,
-combo builder, practice mode, movement training) behaves identically no
-matter which input source produced a press.
+**The chord/settle-window algorithm**, in plain terms: every raw press or
+release restarts a short timer (the "chord window", default 40ms). Rapid
+bursts of activity (e.g. `D`, `F`, `1` pressed within a few ms of each other)
+keep pushing that timer forward, so nothing gets evaluated until the state
+goes quiet. When it finally does, the engine looks at what's *actually* held
+at that instant and compares it to the last logged event:
+
+- If everything is neutral, there's nothing to log — the gesture ended
+  cleanly.
+- If the **direction changed** to a new value, that's a new event — even a
+  "smaller" one (e.g. releasing the forward key while still holding down
+  turns `DF` into `D`, which is logged, because that's a real, meaningful
+  transition).
+- Otherwise, if a **new button appears** that wasn't part of the last logged
+  event, that's a new event too (e.g. adding `+2` while still holding `DF`).
+- Otherwise (only buttons were *released*, direction unchanged), nothing is
+  logged — releasing a button isn't a new performed input, it's the tail end
+  of the input that was already logged.
+
+This is what turns "`D`, `DF`, `DF`, `DF+1`, `DF`, `F`" into one clean
+`DF+1` — without a crude fixed debounce delay on the whole pipeline. Only
+the *history log* is debounced this way; the live "Current Input" readout
+updates instantly on every raw change, with zero added latency.
+
+Holding a key never spams repeats: the keyboard engine's auto-repeat guard
+means a genuine "hold" only ever produces one press event in the first
+place; the gamepad engine's poll loop only fires a press when a button
+transitions from up to down.
+
+---
+
+## How SOCD (opposing directions) is handled
+
+Holding Left and Right together (or Up and Down) is a real possibility on a
+keyboard or leverless controller. Three selectable policies (Settings →
+Input Recognition), applied *before* notation is computed:
+
+- **Neutral** (default): opposing directions cancel out on that axis.
+- **Last Input Priority**: whichever direction was pressed most recently
+  wins.
+- **First Input Priority**: whichever direction was pressed first keeps
+  winning until released.
+
+No policy claims to reproduce any specific game's or physical controller's
+SOCD behavior exactly — these are the three documented, common approaches,
+and the raw key state is never lost regardless of which is selected.
 
 ---
 
 ## How notation works
 
-`notation.js` looks only at the eight booleans in a controller-state snapshot.
-Directions are resolved per axis:
-
-- vertical: `up` and `down` cancel each other out (neither wins)
-- horizontal: `left` and `right` cancel each other out
-
-The resulting (vertical, horizontal) pair maps to one of eight arrows or `N`
-(neutral). Buttons 1–4 are joined with `+` in numeric order when several are
-held (e.g. `1+2`). A direction and buttons combine as `"↘ 1"`.
-
-**Opposite directions (e.g. holding left and right together) never crash the
-system.** They simply resolve to neutral on that axis — the *notation* shows
-`N`, but the *raw* controller state still remembers that both keys are
-physically held. No specific game's SOCD (simultaneous-opposing-direction)
-behavior is claimed or simulated; this is a deliberately simple, predictable
-rule for a keyboard trainer.
+Standard Tekken-style command notation: `U`/`D`/`B`/`F` for the four
+cardinal directions (Back/Forward are relative to a character always facing
+right — the universal convention combo videos and guides are written in),
+`DB`/`DF`/`UB`/`UF` for diagonals, `N` for neutral, and `1`–`4` for the four
+attack buttons. Multiple simultaneous elements join with `+`, always in this
+order: direction, then buttons in numeric order — e.g. `DF+1+2`.
 
 ---
 
-## How combo detection works
+## The combo notation editor: inputs, macros, and labels
 
-`input-history.js` does not log on every keyboard event — it logs on every
-**change of the combined notation signature**. Holding a direction for three
-seconds produces exactly one history entry with a 3-second duration, never a
-flood of repeated identical entries. This is also what makes the release/
-transition behavior correct: e.g. holding Left, then pressing Down (→ `↙`),
-then releasing Left while Down stays held (→ `↓`) produces three clean,
-correctly-ordered history entries with accurate durations, entirely from
-keyboard state — no special-casing required.
+Type a combo as free text, separated by `→`, commas, or spaces — e.g.:
 
-`trainer.js`'s `ComboMatcher` consumes that same stream of notated inputs and
-walks a target sequence one token at a time:
+```
+F DF+1 WS+4 BT DASH
+```
 
-- The first input that matches `target[0]` starts an attempt.
-- Each subsequent input must match the next expected token exactly, or the
-  attempt fails (`WRONG INPUT`) and resets — unless that "wrong" input happens
-  to also match `target[0]`, in which case it starts a fresh attempt.
-  immediately.
-- If no input arrives for too long mid-attempt, the attempt times out
-  (`MISS`).
-- Completing every token fires `COMBO COMPLETE` with full timing data.
+Each token is classified independently:
 
-The same `ComboMatcher` class powers Practice mode, Movement Training, and the
-Random Challenge system — they just create separate instances with different
-targets and timing settings.
+- **Real inputs** (`F`, `DF+1`, `1+2`, ...) are parsed structurally and
+  compared against your live play input-by-input, with precise diagnostics.
+- **Movement macros** (`DASH`, `BACKDASH`) expand into real, verifiable
+  inputs (`F F`, `B B`) — these ARE checked against live input like any
+  other real input, since a dash is something the engine can actually see.
+- **Everything else** (`WS`, `FC`, `BT`, `CH`, `DEW`, or any other term you
+  type) becomes an unverifiable **label** — a training checkpoint. The
+  browser cannot see your character's stance or position in the real game,
+  so label steps are never matched against live input. During practice, the
+  target pauses on a label with a **Confirm Step** button; you press it once
+  you've actually performed that part in-game, and practice continues to the
+  next real input.
 
----
-
-## How timing works
-
-All timestamps come from `performance.now()` (sub-millisecond resolution).
-When a combo was **recorded live** (via the "Record" button or captured while
-building), the gaps between its original inputs are stored as `referenceGaps`
-and saved with the combo. During practice, each new input's gap versus the
-matching reference gap is classified as:
-
-- **PERFECT** — within the timing window of the recorded gap
-- **EARLY** / **LATE** — outside the window, faster/slower than the reference
-- **SUCCESS** — correct input, but no reference timing exists to compare against
-
-Timing windows are configurable in Settings:
-
-| Level    | Tolerance |
-|----------|-----------|
-| Strict   | ±30ms     |
-| Normal   | ±60ms     |
-| Relaxed  | ±100ms    |
+This is a deliberate choice: the trainer evaluates your keyboard/gamepad
+input and timing, not the game state, and it never pretends otherwise.
 
 ---
 
-## How localStorage works
+## Precision modes
 
-`storage.js` namespaces every key under `fgtrainer:` and wraps every read and
-write in try/catch, so a disabled or full storage quota degrades gracefully to
-sane defaults rather than crashing the app. Persisted data: key bindings,
-selected theme, sound settings, timing difficulty, history length, saved
-combos (with their per-combo stats), and global statistics.
+| Mode    | Timing tolerance | Stray input flagged? | Auto-restart on a wrong input that matches step 1? | Timing error fails the attempt? |
+|---------|:---:|:---:|:---:|:---:|
+| Relaxed | ±120ms | No | Yes | No |
+| Normal  | ±60ms  | No | Yes | No |
+| Strict  | ±30ms  | Yes | Yes | Yes |
+| Perfect | ±15ms  | Yes | **No** | Yes |
+
+Timing is only graded against a *reference* gap — either a combo you
+recorded live (its real gaps are saved with it) or none at all (in which
+case timing can't be graded and any correctly-content input just counts as
+a plain success). Structured, per-step diagnostics: `WRONG INPUT` (wrong
+direction entirely), `WRONG BUTTON`, `MISSING BUTTON`, `EXTRA INPUT`,
+`TIMING ERROR`, `MISS` (timed out), `CONFIRM STEP` (a label is pending), and
+`COMBO COMPLETE`.
+
+---
+
+## The training roadmap
+
+**Progress** tab → 10 levels, Fundamentals through Mastery. Each skill is
+either a real **drill** (tracked automatically from attempts) or a
+**checklist** item for things this browser-based trainer genuinely can't
+verify (sidestep, wall position, stance state) — marked practiced manually
+rather than faked. Status is computed from real counts, never asserted
+early:
+
+- `NOT_STARTED` → `LEARNING` (any attempts) → `PRACTICING` (3+ attempts) →
+  `CONSISTENT` (10+ successes at 80%+ success rate) → `MASTERED` (20+
+  successes at 90%+ with 10+ perfect-timing runs).
+
+**Daily Practice** generates a short varied session (fundamentals +
+movement + timing + one of your own saved combos, if any exist, + a random
+challenge). **Random Challenge** (also on the Progress tab) generates a
+sequence at Easy/Normal/Hard/Expert and loads it into the Train tab.
+
+---
+
+## Statistics & mastery
+
+Global stats (Progress tab): attempts, successes, failures, perfect
+attempts, input errors, timing errors, success rate, best/average time,
+fastest input, average input gap, current/best streak — all persisted.
+
+Per-combo **Mastery %** (shown on every combo card) blends success rate
+(60%) and perfect-timing rate (40%). This is a documented heuristic for
+tracking your own improvement, not an objective claim about skill.
+
+---
+
+## Backup: Export / Import
+
+Progress tab → **Export Data** downloads your entire library (characters,
+combos, statistics, progression, settings) as one JSON file. **Import
+Data** loads a previously exported file back in (the page reloads
+afterward to apply it cleanly). Good practice before switching browsers/
+computers, or before a big cleanup.
+
+---
+
+## Upgrading from v1
+
+If you had combos saved in the previous version, they are **not deleted**.
+The first time this version loads, it automatically converts your old
+arrow-notation combos (`↘ 1`, etc.) into the new letter notation (`DF+1`)
+and files them under a new "Unsorted (imported)" character so nothing is
+lost — you can rename/re-file them under a real character afterward. This
+happens once, automatically, the first time the page loads after updating.
+
+Key bindings you had **explicitly customized** before are preserved as-is.
+If you never changed them from the old defaults, the new defaults (`W/A/S/D`
++ `U/I/J/K`) apply automatically.
 
 ---
 
 ## Adding a new movement exercise
 
-Open `js/movement-training.js` and add an object to `MOVEMENT_EXERCISES`:
-
-```js
-{
-  id: 'my-new-drill',              // unique, no spaces
-  name: 'My New Drill',            // shown as the button label
-  description: 'What it teaches.', // shown as the active-drill subtitle
-  sequence: ['↓', '↙', '←']        // any notation tokens from notation.js
-}
-```
-
-That's it — it will automatically appear in the Movement tab's exercise list.
-
----
+Edit `js/movement-training.js` and push an object onto `MOVEMENT_EXERCISES`
+(see the file for the exact shape — `id`, `name`, `description`,
+`sequence`, and an optional `skillId` to also credit a roadmap skill).
 
 ## Adding a new controller theme
 
-Themes are pure CSS. In `css/style.css`, add a new block targeting
-`.virtual-controller.theme-your-theme-name` (and its `.vc-btn` descendants),
-then add a matching `<option value="your-theme-name">` to the `#theme-select`
-dropdown in `index.html`. The underlying input engine, notation, and state
-management are completely theme-agnostic — only the visual presentation
-changes.
+Add a CSS block targeting `.virtual-controller.theme-your-name` in
+`css/style.css`, then add a matching `<option>` to `#theme-select` in
+`index.html`. The input engine is completely theme-agnostic.
 
 ---
 
 ## Notes and limitations
 
-- This is an **input trainer**, not a game or a physics simulator. Movement
-  drills judge directional *sequences and timing only* — they make no claim
-  about simulating any specific game's movement, hitboxes, or frame data.
-- Uses `color-mix()` and other modern CSS; a recent version of Chrome,
-  Firefox, Edge, or Safari is recommended.
+- This is an **input trainer**, not a game or a physics/frame-data
+  simulator. It measures your real keyboard/gamepad input and timing —
+  never claims to know your character's stance, position, or facing.
+- No "frame-perfect" claims are made; timing precision is whatever
+  `performance.now()` and the browser's event loop can genuinely provide,
+  documented per precision mode above.
+- Analog stick input is not implemented (digital D-pad only) — see
+  [Gamepad setup](#gamepad-dualshock-4-setup).
+- Uses `color-mix()` and other modern CSS; a recent Chrome/Firefox/Edge/
+  Safari is recommended.
 - Not affiliated with, endorsed by, or a reproduction of any commercial
   fighting game, controller manufacturer, or its assets.
